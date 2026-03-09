@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "status.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "producer_version",
+    "generated_at_utc",
+    "as_of_date",
+    "state",
+    "scores",
+    "observation_fingerprint",
+    "observers",
+    "ensemble",
+    "action"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "producer_version": {
+      "type": "string"
+    },
+    "generated_at_utc": {
+      "type": "string"
+    },
+    "as_of_date": {
+      "type": "string"
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regime"
+      ],
+      "properties": {
+        "regime": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "theme_migration",
+            "tightening",
+            "brake",
+            "fog"
+          ]
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hazard",
+        "migration",
+        "opportunity"
+      ],
+      "properties": {
+        "hazard": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "migration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "opportunity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dominant_constraint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "emergent_constraint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "constraint_novelty": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "observation_fingerprint": {
+      "type": "object"
+    },
+    "observers": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "ensemble": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Q",
+        "A",
+        "S",
+        "visibility",
+        "gain",
+        "friction",
+        "observer_count"
+      ],
+      "properties": {
+        "Q": {
+          "type": "number"
+        },
+        "A": {
+          "type": "number"
+        },
+        "S": {
+          "type": "number"
+        },
+        "visibility": {
+          "type": "number"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "friction": {
+          "type": "number"
+        },
+        "observer_count": {
+          "type": "integer"
+        },
+        "agreement_pairs": {
+          "type": "array"
+        }
+      }
+    },
+    "action": {
+      "$ref": "action.schema.json"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Schema Bundle
+
+```json
+{
+  "schema_version": "1.0.0",
+  "files": {
+    "action.schema.json": {
+      "sha256": "c36d6b59fd2d1cd99c828d2b5bb6e46ce81742f228629128890622d9c4c2eb71",
+      "keccak256": "0xbaa22aec5035582521068796daf20bc2156bd4c08814627da3d225e07bae0c8c"
+    },
+    "status.schema.json": {
+      "sha256": "c035b2368ee92c63eee0ef0ef6df98abecc2d683fd87c799c2ded752ee11407c",
+      "keccak256": "0x33683407437000e422a924ff948216a1532dff1c72096cc6e4861be7cb8fedc8"
+    },
+    "events.schema.json": {
+      "sha256": "0daac2789c4694ce63d55e497f4f3958fa424a17f3472ec58673bd8fcd16308b",
+      "keccak256": "0x86b6ae2b404daa1253df12e1a16a473ba30767b7dbf01f79892e5e62bca11041"
+    }
+  }
+}
+```

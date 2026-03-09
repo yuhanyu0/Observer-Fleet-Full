@@ -1,0 +1,32 @@
+site:
+  title: "Structural OS"
+  base_url: ""
+
+pipeline:
+  start: "2022-01-01"
+  end: null
+  freq: "1d"
+  lookback_days: 252
+  slope_window: 20
+  top_k: 3
+  event_count: 3
+  event_min_sep_days: 20
+  archive: true
+
+thresholds:
+  fog_visibility_low: 0.45
+  fog_visibility_high: 0.60
+  hazard_tightening: 0.60
+  hazard_brake: 0.80
+  migration_high: 0.60
+  irreversible_hazard: 0.90
+
+weights:
+  quality_q: 1.0
+  agreement_a: 1.0
+  semantic_s: 1.0
+  hazard_s1: 0.30
+  hazard_vfr: 0.30
+  hazard_concentration: 0.40
+  migration_theta: 0.50
+  migration_axis: 0.50

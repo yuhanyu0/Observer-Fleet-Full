@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0.0",
+  "default": {
+    "K": 3,
+    "ridge": 1e-06,
+    "baseline": "median_first_year",
+    "use_log_returns": true,
+    "min_coverage": 0.7
+  },
+  "observers": [
+    {
+      "observer_id": "core_W63_sample",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 63,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "core_W63_lw",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 63,
+      "estimator": "lw"
+    },
+    {
+      "observer_id": "core_W126_sample",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 126,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "core_W126_lw",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 126,
+      "estimator": "lw"
+    },
+    {
+      "observer_id": "core_W252_sample",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 252,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "core_W252_lw",
+      "universe_id": "core",
+      "grammar_id": "groups_v1",
+      "window": 252,
+      "estimator": "lw"
+    },
+    {
+      "observer_id": "full_W63_sample",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 63,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "full_W63_lw",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 63,
+      "estimator": "lw"
+    },
+    {
+      "observer_id": "full_W126_sample",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 126,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "full_W126_lw",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 126,
+      "estimator": "lw"
+    },
+    {
+      "observer_id": "full_W252_sample",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 252,
+      "estimator": "sample"
+    },
+    {
+      "observer_id": "full_W252_lw",
+      "universe_id": "full",
+      "grammar_id": "groups_v1",
+      "window": 252,
+      "estimator": "lw"
+    }
+  ]
+}

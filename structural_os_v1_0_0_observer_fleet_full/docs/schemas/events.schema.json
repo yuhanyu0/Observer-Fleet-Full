@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "events.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "producer_version",
+    "generated_at_utc",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "producer_version": {
+      "type": "string"
+    },
+    "generated_at_utc": {
+      "type": "string"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_date",
+          "scores",
+          "evidence",
+          "artifacts"
+        ],
+        "properties": {
+          "event_date": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "cp_score": {
+                "type": "number"
+              },
+              "hazard_peak": {
+                "type": "number"
+              },
+              "migration_peak": {
+                "type": "number"
+              },
+              "visibility": {
+                "type": "number"
+              }
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "state_transition": {
+                "type": "object"
+              },
+              "story": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "artifacts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "event_page_md": {
+                "type": "string"
+              },
+              "phase_png": {
+                "type": "string"
+              },
+              "visibility_png": {
+                "type": "string"
+              },
+              "agreement_png": {
+                "type": "string"
+              },
+              "constraints_png": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

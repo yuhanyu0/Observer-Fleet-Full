@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "action.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action_code",
+    "risk",
+    "explore",
+    "brakes",
+    "watch_constraints",
+    "rationale"
+  ],
+  "properties": {
+    "action_code": {
+      "type": "string"
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "budget",
+        "cooldown_hours",
+        "human_review_required"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "tighten",
+            "brake"
+          ]
+        },
+        "budget": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cooldown_hours": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "human_review_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "explore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "budget"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "off",
+            "probe",
+            "explore"
+          ]
+        },
+        "budget": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "brakes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rate",
+        "cost",
+        "audit"
+      ],
+      "properties": {
+        "rate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_change_rate",
+            "cooldown_hours",
+            "rebalance_allowed"
+          ],
+          "properties": {
+            "max_change_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cooldown_hours": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rebalance_allowed": {
+              "type": "boolean"
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surcharge_bps",
+            "max_gross"
+          ],
+          "properties": {
+            "surcharge_bps": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_gross": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1.5
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "review_required",
+            "replay_required",
+            "sample_rate"
+          ],
+          "properties": {
+            "review_required": {
+              "type": "boolean"
+            },
+            "replay_required": {
+              "type": "boolean"
+            },
+            "sample_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "watch_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rationale": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

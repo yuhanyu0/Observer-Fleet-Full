@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Structural OS Verifier</title>
+<style>
+body{margin:0;background:#0b0f14;color:#d6e2f0;font-family:ui-sans-serif,system-ui}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:#0f1620;border:1px solid #223042;border-radius:10px;padding:14px;margin:12px 0}
+input,select,button{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #223042;background:#0a111a;color:#d6e2f0;font-family:ui-monospace,monospace}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+pre{background:#07101a;border:1px solid #223042;border-radius:10px;padding:12px;white-space:pre-wrap}
+</style></head><body><div class="wrap">
+<h1>Structural OS Verifier</h1>
+<div class="card">
+  <label>Mode</label>
+  <select id="mode"><option value="latest">Latest</option><option value="archive">Archive</option></select>
+  <div id="archiveWrap" style="display:none">
+    <label>Archive date</label><select id="archiveDate"></select>
+  </div>
+  <div class="row">
+    <button id="loadBtn">Load URLs</button><button id="runBtn">Run verification</button>
+  </div>
+</div>
+<div class="card">
+  <label>Status URL</label><input id="statusUrl" type="text"/>
+  <label>Events URL</label><input id="eventsUrl" type="text"/>
+  <label>Schema bundle URL</label><input id="bundleUrl" type="text"/>
+  <label>Manifest URL (archive)</label><input id="manifestUrl" type="text"/>
+</div>
+<div class="card"><pre id="log">Ready.</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/ajv-dist@8.17.1/dist/ajv2020.bundle.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function log(x){$("log").textContent += "\n"+x}
+function set(x){$("log").textContent=x}
+function def(rel){ return new URL(rel, window.location.href).toString(); }
+function setLatest(){ $("statusUrl").value=def("../status.json"); $("eventsUrl").value=def("../events/events.json"); $("bundleUrl").value=def("../schemas/bundle.json"); $("manifestUrl").value=""; }
+async function txt(u){ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error(u+" "+r.status); return await r.text(); }
+async function sha256(text){ const b=new TextEncoder().encode(text); const d=await crypto.subtle.digest("SHA-256", b); return Array.from(new Uint8Array(d)).map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function parseJson(t){ return JSON.parse(t); }
+async function loadArchiveDates(){
+  try{
+    const j = JSON.parse(await txt(def("../archive/index.json")));
+    const ds = j.dates || [];
+    $("archiveDate").innerHTML = ds.map(d=>`<option value="${d}">${d}</option>`).join("");
+  }catch(e){ $("archiveDate").innerHTML = "<option value=''>No archive</option>"; }
+}
+$("mode").addEventListener("change", async ()=>{
+  const m=$("mode").value;
+  $("archiveWrap").style.display = m==="archive" ? "block" : "none";
+  if(m==="archive"){ await loadArchiveDates(); }
+});
+$("loadBtn").addEventListener("click", ()=>{
+  const m=$("mode").value;
+  if(m==="latest"){ setLatest(); return; }
+  const d=$("archiveDate").value;
+  const base = def("../archive/"+d+"/");
+  $("statusUrl").value=new URL("status.json", base).toString();
+  $("eventsUrl").value=new URL("events.json", base).toString();
+  $("bundleUrl").value=new URL("schema_bundle.json", base).toString();
+  $("manifestUrl").value=new URL("manifest.json", base).toString();
+});
+$("runBtn").addEventListener("click", async ()=>{
+  set("Running...");
+  try{
+    const st = await txt($("statusUrl").value.trim());
+    const ev = await txt($("eventsUrl").value.trim());
+    const bu = await txt($("bundleUrl").value.trim());
+    log("status sha256: "+ await sha256(st));
+    log("events sha256: "+ await sha256(ev));
+    log("bundle sha256: "+ await sha256(bu));
+    const murl = $("manifestUrl").value.trim();
+    if(murl){
+      const man = JSON.parse(await txt(murl));
+      const files = man.files || {};
+      const ssha = await sha256(st), esha = await sha256(ev), bsha = await sha256(bu);
+      log((files["status.json"]?.sha256===ssha ? "OK" : "FAIL")+" manifest status");
+      log((files["events.json"]?.sha256===esha ? "OK" : "FAIL")+" manifest events");
+      log((files["schema_bundle.json"]?.sha256===bsha ? "OK" : "FAIL")+" manifest schema bundle");
+    }
+    // validate against current site schemas
+    const AjvCtor = window.Ajv2020 || window.Ajv;
+    const ajv = new AjvCtor({allErrors:true, strict:false});
+    const action = JSON.parse(await txt(def("../schemas/action.schema.json")));
+    const statusSchema = JSON.parse(await txt(def("../schemas/status.schema.json")));
+    const eventsSchema = JSON.parse(await txt(def("../schemas/events.schema.json")));
+    ajv.addSchema(action); ajv.addSchema(statusSchema); ajv.addSchema(eventsSchema);
+    const okS = ajv.validate(statusSchema, JSON.parse(st));
+    const okE = ajv.validate(eventsSchema, JSON.parse(ev));
+    log((okS?"OK":"FAIL")+" schema status");
+    if(!okS) log(JSON.stringify(ajv.errors,null,2));
+    log((okE?"OK":"FAIL")+" schema events");
+  }catch(e){ log("ERROR: "+e.message); }
+});
+setLatest();
+</script></div></body></html>

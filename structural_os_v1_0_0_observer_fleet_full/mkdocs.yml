@@ -1,0 +1,26 @@
+site_name: Structural OS
+site_description: Observer-fleet structural observatory with brake-first controller
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+plugins: []
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.snippets
+nav:
+  - Home: index.md
+  - Briefs: briefs/index.md
+  - Events: events/index.md
+  - Observers: observers/index.md
+  - Archive: archive/index.md
+  - Schemas:
+      - Overview: schemas/index.md
+      - Changelog: schemas/changelog.md
+      - Bundle: schemas/bundle.md
+  - Verify: verify.md
