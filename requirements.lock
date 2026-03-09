@@ -1,0 +1,11 @@
+numpy==1.26.4
+pandas==2.2.2
+yfinance==0.2.48
+matplotlib==3.8.4
+PyYAML==6.0.2
+scikit-learn==1.5.1
+mkdocs==1.6.1
+mkdocs-material==9.5.34
+jsonschema==4.23.0
+web3==6.20.2
+eth-utils==4.1.1
