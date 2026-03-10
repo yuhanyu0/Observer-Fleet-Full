@@ -1,0 +1,295 @@
+name: daily-structural-os
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Optional run note"
+        required: false
+        default: ""
+  schedule:
+    - cron: "10 1 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: structural-os-daily
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.lock
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock
+
+      - name: Run Structural OS pipeline
+        run: |
+          python -m structural_os.cli run --config configs/macro_theme.yaml
+
+      - name: Check whether schema bundle needs rebuild
+        id: bundlecheck
+        run: |
+          python - <<'PY'
+          import json, hashlib, os
+          from pathlib import Path
+
+          try:
+            from eth_utils import keccak
+          except Exception:
+            keccak = None
+
+          def canonical_bytes(obj) -> bytes:
+            s = json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            return s.encode("utf-8")
+
+          schemas = Path("docs/schemas")
+          files = ["action.schema.json", "status.schema.json", "events.schema.json"]
+          bundle_path = schemas / "bundle.json"
+          desired_version = "1.0.0"
+
+          up_to_date = True
+          if not bundle_path.exists():
+            up_to_date = False
+          else:
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            if bundle.get("schema_version") != desired_version:
+              up_to_date = False
+            else:
+              for fn in files:
+                p = schemas / fn
+                if not p.exists():
+                  up_to_date = False
+                  break
+                obj = json.loads(p.read_text(encoding="utf-8"))
+                b = canonical_bytes(obj)
+                sha = hashlib.sha256(b).hexdigest()
+                kk = "0x" + keccak(b).hex() if keccak else None
+
+                rec = (bundle.get("files") or {}).get(fn) or {}
+                if rec.get("sha256") != sha:
+                  up_to_date = False
+                  break
+                if kk and rec.get("keccak256") != kk:
+                  up_to_date = False
+                  break
+
+          out = "true" if up_to_date else "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+            f.write(f"up_to_date={out}\n")
+          print("bundle_up_to_date:", out)
+          PY
+
+      - name: Build schema bundle (only if schemas changed)
+        if: ${{ steps.bundlecheck.outputs.up_to_date != 'true' }}
+        run: |
+          python scripts/make_schema_bundle.py --schemas docs/schemas --schema_version 1.0.0
+
+      - name: Validate outputs against schemas
+        run: |
+          python scripts/validate_outputs.py --status docs/status.json --events docs/events/events.json --schemas docs/schemas
+
+      - name: Publish hashes on-chain (optional)
+        if: ${{ secrets.CHAIN_RPC_URL != '' && secrets.CHAIN_CONTRACT_ADDRESS != '' && secrets.CHAIN_PRIVATE_KEY != '' }}
+        env:
+          CHAIN_RPC_URL: ${{ secrets.CHAIN_RPC_URL }}
+          CHAIN_PRIVATE_KEY: ${{ secrets.CHAIN_PRIVATE_KEY }}
+          CHAIN_CONTRACT_ADDRESS: ${{ secrets.CHAIN_CONTRACT_ADDRESS }}
+          CHAIN_CHAIN_ID: ${{ secrets.CHAIN_CHAIN_ID }}
+          CHAIN_URI: ${{ secrets.CHAIN_URI }}
+          CHAIN_DRY_RUN: ${{ secrets.CHAIN_DRY_RUN }}
+          CHAIN_PRIORITY_FEE_GWEI: ${{ secrets.CHAIN_PRIORITY_FEE_GWEI }}
+          CHAIN_MAX_FEE_GWEI: ${{ secrets.CHAIN_MAX_FEE_GWEI }}
+          CHAIN_GAS_PRICE_GWEI: ${{ secrets.CHAIN_GAS_PRICE_GWEI }}
+        run: |
+          python scripts/publish_onchain_v3.py --status docs/status.json --events docs/events/events.json --schema docs/schemas/bundle.json --out docs
+
+      - name: Create daily archive snapshot
+        id: archive
+        env:
+          INPUT_NOTE: ${{ github.event.inputs.note }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import shutil
+          import hashlib
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          try:
+            from eth_utils import keccak
+          except Exception:
+            keccak = None
+
+          def read_text(p: Path) -> str:
+            return p.read_text(encoding="utf-8")
+
+          def file_hashes(txt: str):
+            b = txt.encode("utf-8")
+            out = {
+              "bytes": len(b),
+              "sha256": hashlib.sha256(b).hexdigest()
+            }
+            if keccak:
+              out["keccak256"] = "0x" + keccak(b).hex()
+            else:
+              out["keccak256"] = None
+            return out
+
+          status_path = Path("docs/status.json")
+          events_path = Path("docs/events/events.json")
+          schema_path = Path("docs/schemas/bundle.json")
+
+          status = json.loads(read_text(status_path))
+          as_of = status.get("as_of_date")
+          if not as_of:
+            raise RuntimeError("docs/status.json missing as_of_date")
+
+          archive_root = Path("docs/archive")
+          daydir = archive_root / as_of
+          daydir.mkdir(parents=True, exist_ok=True)
+
+          shutil.copyfile(status_path, daydir / "status.json")
+          shutil.copyfile(events_path, daydir / "events.json")
+          shutil.copyfile(schema_path, daydir / "schema_bundle.json")
+
+          schemadir = daydir / "schemas"
+          schemadir.mkdir(parents=True, exist_ok=True)
+          for fn in ["action.schema.json", "status.schema.json", "events.schema.json"]:
+            src = Path("docs/schemas") / fn
+            if src.exists():
+              shutil.copyfile(src, schemadir / fn)
+
+          now = datetime.now(timezone.utc).isoformat()
+
+          manifest = {
+            "as_of_date": as_of,
+            "generated_at_utc": now,
+            "provenance": {
+              "github_run_id": os.getenv("GITHUB_RUN_ID"),
+              "github_run_number": os.getenv("GITHUB_RUN_NUMBER"),
+              "github_sha": os.getenv("GITHUB_SHA"),
+              "workflow": os.getenv("GITHUB_WORKFLOW"),
+              "ref": os.getenv("GITHUB_REF"),
+              "note": (os.getenv("INPUT_NOTE") or "").strip()
+            },
+            "files": {}
+          }
+
+          files_to_hash = [
+            ("status.json", daydir / "status.json"),
+            ("events.json", daydir / "events.json"),
+            ("schema_bundle.json", daydir / "schema_bundle.json"),
+            ("schemas/action.schema.json", schemadir / "action.schema.json"),
+            ("schemas/status.schema.json", schemadir / "status.schema.json"),
+            ("schemas/events.schema.json", schemadir / "events.schema.json"),
+          ]
+
+          for name, p in files_to_hash:
+            if p.exists():
+              manifest["files"][name] = file_hashes(read_text(p))
+
+          (daydir / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8"
+          )
+
+          archive_root.mkdir(parents=True, exist_ok=True)
+          dates = []
+          for d in archive_root.iterdir():
+            if d.is_dir() and len(d.name) == 10 and d.name[4] == "-" and d.name[7] == "-":
+              dates.append(d.name)
+          dates.sort(reverse=True)
+
+          lines = []
+          lines.append("# Archive")
+          lines.append("")
+          lines.append("Daily immutable snapshots (status/events/schema bundle + manifest).")
+          lines.append("")
+          lines.append("| Date | Brief | Status | Events | Manifest |")
+          lines.append("|---|---|---|---|---|")
+          for d in dates:
+            lines.append(
+              f"| {d} | [brief](../briefs/{d}.md) | "
+              f"[status](./{d}/status.json) | "
+              f"[events](./{d}/events.json) | "
+              f"[manifest](./{d}/manifest.json) |"
+            )
+          (archive_root / "index.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          (archive_root / "index.json").write_text(
+            json.dumps({"dates": dates}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8"
+          )
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+            f.write(f"as_of_date={as_of}\n")
+
+          print("[OK] archive snapshot created:", as_of)
+          PY
+
+      - name: Commit generated docs
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          AS_OF_DATE: ${{ steps.archive.outputs.as_of_date }}
+          RUN_NOTE: ${{ github.event.inputs.note }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add docs
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "archive: ${AS_OF_DATE}" \
+                       -m "run_id=${GITHUB_RUN_ID} sha=${GITHUB_SHA}" \
+                       -m "note=${RUN_NOTE}"
+            git pull --rebase origin main || true
+            git push origin main
+          fi
+
+      - name: Build site with MkDocs
+        run: |
+          mkdocs build --strict
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
